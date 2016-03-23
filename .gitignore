@@ -2,9 +2,6 @@
 
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
-myzk/
-code/
-zookeeper/
 
 # Package Files #
 *.jar
