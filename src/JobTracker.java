@@ -8,16 +8,23 @@ import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.Watcher.Event.EventType;
 
-import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
+import java.util.List;
+import java.net.*;
+import java.io.*;
 
 public class JobTracker {
     
     String jobTrackerPath = "/jobtracker";
+    String jobsPath = "/jobs";
     ZkConnector zkc;
     Watcher watcher;
-    String address = "test";
     CountDownLatch nodeDownSignal = new CountDownLatch(1);
+    static ServerSocket serverSocket = null;
+
+    private final String host = "localhost";
+    private static final int port = 8000;
+    public static final int NUM_DIVISIONS = 10;
 
     public static void main(String[] args) {
         if (args.length != 1) {
@@ -27,15 +34,20 @@ public class JobTracker {
         JobTracker t = new JobTracker(args[0]);   
         t.checkpath();
 
+        t.checkIncompleteJobs();
+
+        try{
+            serverSocket = new ServerSocket(port);
+        }catch(IOException e){
+            System.exit(-1);
+        }
+
         while(true){
-            System.out.println("TEST");
             try{
-            Thread.sleep(1000);
-
+                new JobTrackerHandlerThread(serverSocket.accept(), args[0]).start();
             }catch(Exception e){
-              
+                System.exit(-1);
             }
-
         }
     }
 
@@ -54,15 +66,57 @@ public class JobTracker {
             } 
         };
     }
+
+    private void checkIncompleteJobs(){
+        //create jobs directory in case it doesnt exist
+        zkc.create(jobsPath, null, CreateMode.PERSISTENT);
+
+        ZooKeeper zk = zkc.getZooKeeper();
+        List<String> children = null;
+        try {
+            children = zk.getChildren(jobsPath, false);
+        }catch(Exception e){
+        }
+
+        for (String child : children){
+            addIncompleteTasks(child, zk);
+        }
+    }
+
+    private void addIncompleteTasks(String child, ZooKeeper zk){
+        List<String> children = null;
+        try {
+            children = zk.getChildren(jobsPath + "/" + child, false);
+        }catch(Exception e){
+        }
+        int numMissing = 0;
+        if (children == null){
+            numMissing = NUM_DIVISIONS;
+        }else{
+            numMissing = NUM_DIVISIONS - children.size();
+        }
+        if (numMissing > 0){
+            for (int i = children.size() + 1; i <= NUM_DIVISIONS; i++){
+              Code ret = zkc.create(
+                          jobsPath + "/" + child + "/" + i,         // Path of znode
+                          null,           // Data not needed.
+                          CreateMode.PERSISTENT   // Znode type, set to EPHEMERAL.
+                          );
+              System.out.println(ret);
+            }
+        }
+    }
     
     private void checkpath() {
         Stat stat = zkc.exists(jobTrackerPath, watcher);
+        String address = host+":"+port;
         if (stat == null) {              // znode doesn't exist; let's try creating it
             Code ret = zkc.create(
                         jobTrackerPath,         // Path of znode
                         address,           // Data not needed.
                         CreateMode.EPHEMERAL   // Znode type, set to EPHEMERAL.
                         );
+            zkc.create(jobsPath, null, CreateMode.PERSISTENT);
             if (ret != Code.OK){
                 checkpath();
             }
@@ -93,5 +147,4 @@ public class JobTracker {
             }
         }
     }
-
 }

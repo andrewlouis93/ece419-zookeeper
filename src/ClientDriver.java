@@ -8,6 +8,9 @@ import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.data.Stat;
 import java.util.concurrent.CountDownLatch;
 
+import java.net.*;
+import java.io.*;
+
 public class ClientDriver implements Runnable {
 
     private String jobTrackerPath = "/jobtracker";
@@ -17,6 +20,10 @@ public class ClientDriver implements Runnable {
     private int jobOrStatus;
     private String jobId;
     private Thread runningThread;
+
+    private Socket socket = null;
+    private ObjectOutputStream out = null;
+    private ObjectInputStream in = null;
     
     public static void main(String[] args) {
   
@@ -80,7 +87,7 @@ public class ClientDriver implements Runnable {
             }
 
             String addr = new String(addrBytes);
-            System.out.println(addr);
+            connectToJobTracker(addr);
         }catch(InterruptedException e){
             System.out.println("interrupted");
             nodeCreatedSignal = new CountDownLatch(1);
@@ -88,8 +95,62 @@ public class ClientDriver implements Runnable {
         }
     }
 
-    private void checkStatus(String hash){
+    private void connectToJobTracker(String addr){
+        String[] hostport = addr.split(":");
+        String host = hostport[0];
+        int port = Integer.parseInt(hostport[1]);
+
+        while(true){
+            try{
+                socket = new Socket(host, port);
+                out = new ObjectOutputStream(socket.getOutputStream());
+                in = new ObjectInputStream(socket.getInputStream());
+                break;
+            }catch(ConnectException e){
+              try{
+                Thread.sleep(500);
+              }catch(InterruptedException ex){
+              }
+            }catch(Exception e){
+                e.printStackTrace();
+                System.exit(-1);
+            }
+        }
+
+        System.out.println(socket);
+
+        if(jobOrStatus == 0){
+            addJob();
+        }else if (jobOrStatus == 1){
+            checkStatus();
+        }
     }
+
+    private void addJob(){
+        String toJobTracker = "newjob:" + jobId;
+        try{
+            out.writeObject(toJobTracker);
+            String reply = (String) in.readObject();
+        }catch(Exception e){
+            e.printStackTrace();
+            System.exit(-1);
+        }
+        
+    }
+
+    private void checkStatus(){
+        System.out.println("Check Status");
+        String toJobTracker = "checkstatus:" + jobId;
+        try{
+            out.writeObject(toJobTracker);
+            String reply = (String) in.readObject();
+            System.out.println(reply);
+        }catch(Exception e){
+            System.exit(-1);
+        }
+
+    }
+
 
     private void handleEvent(WatchedEvent event){
         boolean isNodeCreated = event.getType().equals(EventType.NodeCreated);
