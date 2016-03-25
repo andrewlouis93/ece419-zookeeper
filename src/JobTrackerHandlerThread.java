@@ -70,7 +70,7 @@ public class JobTrackerHandlerThread extends Thread {
     if (stat == null) {              // znode doesn't exist; let's try creating it
         Code ret = zkc.create(
                     jobsPath + hash,         // Path of znode
-                    "~:100",           // Data not needed.
+                    "~:" + JobTracker.NUM_DIVISIONS,           // Data not needed.
                     CreateMode.PERSISTENT   // Znode type, set to EPHEMERAL.
                     );
         return 1;
