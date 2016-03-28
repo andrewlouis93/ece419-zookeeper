@@ -52,6 +52,7 @@ public class JobTracker {
     }
 
     public JobTracker(String hosts) {
+        System.out.println("JobTracker Hosts: " + hosts);
         zkc = new ZkConnector();
         try {
             zkc.connect(hosts);

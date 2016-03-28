@@ -22,12 +22,12 @@ public class JobTrackerHandlerThread extends Thread {
 	public JobTrackerHandlerThread(Socket socket, String zkhost) {
 		super("JobTrackerHandlerThread");
 		this.socket = socket;
-    zkc = new ZkConnector();
-    try {
-      zkc.connect(zkhost);
-    } catch(Exception e) {
-      System.out.println("Zookeeper connect "+ e.getMessage());
-    }
+        zkc = new ZkConnector();
+        try {
+          zkc.connect(zkhost);
+        } catch(Exception e) {
+          System.out.println("Zookeeper connect "+ e.getMessage());
+        }
 	}
 
 	public void run() {
@@ -38,21 +38,20 @@ public class JobTrackerHandlerThread extends Thread {
 			/* stream to write back to client */
 			ObjectOutputStream toClient = new ObjectOutputStream(socket.getOutputStream());
 
-      String packetFromClient = "";
-			
+            String packetFromClient = "";
 
 			while (( packetFromClient = (String) fromClient.readObject()) != null) {
-        String[] msg = packetFromClient.split(":");
-        if (msg[0].equals("newjob")){
-            int ret = addJob(msg[1]);
-            toClient.writeObject("Done");
-            if (ret == 1){
-                divideJobs(msg[1]);
-            }
-        }else if (msg[0].equals("checkstatus")){
-            String status = getStatus(msg[1]);
-					  toClient.writeObject(status);
-        }
+                String[] msg = packetFromClient.split(":");
+                if (msg[0].equals("newjob")){
+                    int ret = addJob(msg[1]);
+                    toClient.writeObject("Done");
+                    if (ret == 1){
+                        divideJobs(msg[1]);
+                    }
+                }else if (msg[0].equals("checkstatus")){
+                    String status = getStatus(msg[1]);
+        					  toClient.writeObject(status);
+                }
 			}
 			
 			/* cleanup when client exits */
