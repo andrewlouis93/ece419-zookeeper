@@ -9,6 +9,7 @@ import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.Watcher.Event.EventType;
 
 import java.util.concurrent.CountDownLatch;
+
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Scanner;
@@ -22,7 +23,7 @@ public class FileServer {
     
     ZkConnector zkc;
     Watcher watcher;
-    List dictionary = null;
+    public List dictionary = null;
     CountDownLatch nodeDownSignal = new CountDownLatch(1);
 
     static ServerSocket serverSocket = null;
@@ -30,7 +31,6 @@ public class FileServer {
     private final String host = "localhost";
     private static final int port = 8001;
     
-
 
     public static void main(String[] args) {
         if (args.length != 2) {
@@ -50,7 +50,8 @@ public class FileServer {
             try{
                 new FileServerHandlerThread(
                         serverSocket.accept(), 
-                        args[0]
+                        args[0], 
+                        t.dictionary
                     ).start();
             }catch(Exception e){
                 System.exit(-1);
@@ -60,7 +61,6 @@ public class FileServer {
 
     public FileServer(String hosts, String dictPath) {
         System.out.println("Dict Path: " + dictPath);
-        System.out.println("NUM DIVISIONS: " + JobTracker.NUM_DIVISIONS);
         zkc = new ZkConnector();
         try {
             zkc.connect(hosts);
@@ -76,7 +76,6 @@ public class FileServer {
         };
         
         dictionary = initializeDictionary(dictPath);
-        // getDictionary(1);
     }
     
     private void checkpath() {
@@ -141,12 +140,5 @@ public class FileServer {
         
         return dict;
     }
-    
-    // parition idx = 1... JobTracker.NUM_DIVISIONS (10)
-    public List getDictionary(int partition_id){
-        assert(partition_id <= JobTracker.NUM_DIVISIONS);
-        int partition_size = dictionary.size()/JobTracker.NUM_DIVISIONS;
-        int start_index = (partition_id - 1) * partition_size;
-        return new ArrayList(dictionary.subList( start_index, partition_size ));
-    }
+
 }

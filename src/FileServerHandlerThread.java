@@ -8,17 +8,22 @@ import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.Watcher.Event.EventType;
 
+import java.util.List;
+import java.util.ArrayList;
+
 import java.net.*;
 import java.io.*;
 
 public class FileServerHandlerThread extends Thread {
 	private Socket socket = null;
     private ZkConnector zkc;
+    private List dictionary = null;
 
-	public FileServerHandlerThread(Socket socket, String zkhost) {
+	public FileServerHandlerThread(Socket socket, String zkhost, List dictionary) {
 		super("FileServerHandlerThread");
 		this.socket = socket;
-        
+        this.dictionary = dictionary;
+
         zkc = new ZkConnector();
         
         try {
@@ -27,6 +32,14 @@ public class FileServerHandlerThread extends Thread {
           System.out.println("Zookeeper connect "+ e.getMessage());
         }
 	}
+
+    // parition idx = 1... JobTracker.NUM_DIVISIONS (10)
+    public List getDictionary(int partition_id){
+        assert(partition_id <= JobTracker.NUM_DIVISIONS);
+        int partition_size = dictionary.size()/JobTracker.NUM_DIVISIONS;
+        int start_index = (partition_id - 1) * partition_size;
+        return new ArrayList(dictionary.subList( start_index, partition_size ));
+    }
 
 	public void run() {
 		try {
