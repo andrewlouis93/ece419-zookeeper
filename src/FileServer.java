@@ -28,24 +28,28 @@ public class FileServer {
 
     static ServerSocket serverSocket = null;
 
-    private final String host = "localhost";
-    private static final int port = 8001;
+    public static String host;
+    public static int port;
     
-
     public static void main(String[] args) {
         if (args.length != 2) {
             System.out.println("Usage: java -classpath ../src/lib/zookeeper-3.3.2.jar:../src/lib/log4j-1.2.15.jar:../src/.  FileServer $1:$2 ../src/dictionary/lowercase.rand");
             return;
         }
         FileServer t = new FileServer(args[0], args[1]); 
-        t.checkpath();
-
+        
         try{
-            serverSocket = new ServerSocket(port);
+            serverSocket = new ServerSocket(0);
+
+            host = java.net.InetAddress.getLocalHost().getHostName();
+            port = serverSocket.getLocalPort();
+
         }catch(IOException e){
             System.exit(-1);
         }
 
+        t.checkpath();
+        
         while(true){
             try{
                 new FileServerHandlerThread(
