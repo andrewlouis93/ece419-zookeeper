@@ -61,6 +61,7 @@ public class FileServerHandlerThread extends Thread {
 			toClient.close();
 			fromClient.close();
 			socket.close();
+			zkc.close();
 
 		} catch (IOException e) {
 			System.out.println("FileServerHandlerThread");
@@ -68,6 +69,9 @@ public class FileServerHandlerThread extends Thread {
 		}
 		catch (ClassNotFoundException e) {
 			System.out.println(e);
+		}
+		catch (InterruptedException e){
+			e.printStackTrace();
 		}
 	}
 

@@ -16,13 +16,6 @@ import java.util.Random;
 import java.net.*;
 import java.io.*;
 
-/*
-    TODO: 
-        - Get the path of a sequential node, add the childModified watcher
-        - Once the latch is set to 0, make sure it is a new node (NodeChildChanged)
-        - And if the node is new, spawn WorkerThread to handle it and reset latch.
-*/
-        
 public class Worker {
 
     String jobsPath = "/jobs";
@@ -33,14 +26,13 @@ public class Worker {
     Integer fsPort = null;
 
     ZkConnector zkc;
+    CountDownLatch nodeUpSignal = new CountDownLatch(1);
     Watcher watcher;
-
-
-    // static ServerSocket serverSocket = null;
 
     private static String host;
     private static int port;
     private static String zkcHosts;
+    
 
     public Worker(String hosts) {
         System.out.println("ZK Hosts: " + hosts);
@@ -54,7 +46,7 @@ public class Worker {
         watcher = new Watcher() { // Anonymous Watcher
             @Override
             public void process(WatchedEvent event) {
-                // handleEvent(event);
+                handleEvent(event);
             }
         };
     }
@@ -67,14 +59,17 @@ public class Worker {
         zkcHosts = args[0];
         Worker t = new Worker(args[0]);
 
-        t.registerFileServer();
-        t.registerWorker();
-        t.initializeWatcher();
-
+        // t.registerFileServer();
+        t.registerWorker();        
         
         while (true){
             try{
+                t.registerFileServer();
                 t.processJobs();    
+
+                // sleep to reduce prob. of overlapping tasks being done.
+                // Thread.currentThread().sleep(10);
+                Thread.currentThread().sleep(1000); 
             }catch(KeeperException e){
                 System.out.println(e);
             }catch(InterruptedException e){
@@ -86,6 +81,8 @@ public class Worker {
     }
 
     private void processJobs() throws KeeperException, InterruptedException, IOException{
+
+
         List<String> pendingTasks = new ArrayList<String>();
         List<String> allTasks = zkc.zooKeeper.getChildren(jobsPath, false);
 
@@ -96,7 +93,7 @@ public class Worker {
                 null
             );
             String numJobs = new String(dataBytes);
-            System.out.println("numJobs: " + numJobs);
+            // System.out.println("numJobs: " + numJobs);
             if (!numJobs.equals("null")){
                 String[] s = numJobs.split(":");
                 
@@ -143,18 +140,18 @@ public class Worker {
                 dictSock.close();
 
                 String pword = findPassword(dictPartition, selectedTask);
-                // System.out.println("PASSWORD IS : " + pword);
+                System.out.println("PASSWORD IS : " + pword);
 
                 // decremenet job, and delete node.
                 updateZookeeper( selectedTask, selectedJob, pword );
 
             }
             else{
-                System.out.println("no jobs");
+                System.out.println("No Pending Jobs Left.");
             }
 
         }else{
-            System.out.println("no tasks");
+            System.out.println("No Pending Tasks Left.");
         }
     }
 
@@ -175,40 +172,36 @@ public class Worker {
     }
 
     private void registerFileServer(){
-        Stat stat = zkc.exists( "/fileserver", null );
+        Stat stat = zkc.exists( "/fileserver", watcher );
 
-        if (stat == null){}
-        else{
-            byte[] dataBytes;
+        if (stat == null){
+            // wait until fileserver exists
             try{
-                dataBytes = zkc.zooKeeper.getData(
-                    "/fileserver",
-                    false,
-                    null
-                );
-                String fsLocation = new String(dataBytes);
-                String[] s = fsLocation.split(":");
-
-                fsHost = s[0];
-                fsPort = Integer.valueOf(s[1]);
-            }catch(KeeperException e){
-                System.out.println(e);
+                nodeUpSignal.await();    
             }catch(InterruptedException e){
-                System.out.println(e);
+                e.printStackTrace();
             }
+            
         }
-    }
-
-    private void initializeWatcher() {
+        
+        byte[] dataBytes;
         try{
-            zkc.zooKeeper.getChildren(jobsPath, watcher);
-        }
-        catch(KeeperException e){
+            dataBytes = zkc.zooKeeper.getData(
+                "/fileserver",
+                false,
+                null
+            );
+            String fsLocation = new String(dataBytes);
+            String[] s = fsLocation.split(":");
+
+            fsHost = s[0];
+            fsPort = Integer.valueOf(s[1]);
+        }catch(KeeperException e){
+            System.out.println(e);
+        }catch(InterruptedException e){
             System.out.println(e);
         }
-        catch(InterruptedException e){
-            System.out.println(e);
-        }
+        
     }
 
     private String convertToMD5(String src){
@@ -267,6 +260,15 @@ public class Worker {
             if (result != null){
                 tasksRemaining += (":password:" + result);
             }
+            else{
+                // if job finishes after password is found, 
+                // make sure it's not removed from the data. 
+                if (s.length > 2){
+                    tasksRemaining += ( ":" + s[2] + ":" + s[3]);
+                }
+            }
+
+
 
             String _data = "~:" + tasksRemaining;
             Stat stat = zk.setData(
@@ -299,34 +301,23 @@ public class Worker {
 
 
 
-    // private void handleEvent(WatchedEvent event) {
-    //     ZooKeeper zk = zkc.getZooKeeper();        
-    //     String path = event.getPath();
-    //     System.out.println("Worker Watcher got path: " + path);
-    //     System.out.println("Event Type: " + event.getType());
-    //     EventType type = event.getType();
-    //     if(path.equalsIgnoreCase(jobsPath)) {
-    //         if (type == EventType.NodeDeleted) {
-    //             // nodeDownSignal.countDown();
-    //         }
-    //         else if(type == EventType.NodeChildrenChanged){
-    //             try{
+    private void handleEvent(WatchedEvent event) {
+        ZooKeeper zk = zkc.getZooKeeper();        
+        String path = event.getPath();
+        System.out.println("Worker Watcher got path: " + path);
+        System.out.println("Event Type: " + event.getType());
+        EventType type = event.getType();
+        if(path.equalsIgnoreCase("/fileserver")) {
+            if (type == EventType.NodeCreated) {
+                nodeUpSignal.countDown();
+                registerFileServer();                
+            }
+            else if (type == EventType.NodeDeleted){
+                System.out.println("FILESERVER DELETED");
+                nodeUpSignal = new CountDownLatch(1);
+            }
 
-    //                 processJobs();
-    //                 // get list of jobs, select a job, and
-    //                 jobsAvailable.countDown();                    
-
-    //             }catch(KeeperException e){
-    //                 System.out.println(e);
-    //             }
-    //             catch(InterruptedException e){
-    //                 System.out.println(e);
-    //             }
-    //             catch(IOException e){
-    //                 System.out.println(e);
-    //             }
-    //         }
-    //     }
-    // }
+        }
+    }
 
 }
