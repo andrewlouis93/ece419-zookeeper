@@ -85,6 +85,7 @@ public class FileServer {
     private void checkpath() {
         Stat stat = zkc.exists(fileServerPath, watcher);
         String address = host+":"+port;
+        System.out.println(address);
         if (stat == null) {              // znode doesn't exist; let's try creating it
             Code ret = zkc.create(
                             fileServerPath,         // Path of znode

@@ -13,12 +13,6 @@ import java.util.List;
 import java.net.*;
 import java.io.*;
 
-/*
-    TODO: 
-        - Divide the jobs among existing workers by adding a job
-        - as the child of a worker node.
-*/
-
 
 public class JobTracker {
     
