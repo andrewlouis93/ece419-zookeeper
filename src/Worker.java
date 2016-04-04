@@ -9,6 +9,7 @@ import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.Watcher.Event.EventType;
 
 import java.util.concurrent.CountDownLatch;
+import java.security.MessageDigest;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Random;
@@ -128,25 +129,33 @@ public class Worker {
                 toFS.writeObject(selectedJob);
                 ObjectInputStream fromFS = new ObjectInputStream(dictSock.getInputStream());
 
-                List<String> dictPartition;
+                List<String> dictPartition = null;
                 try{
                     dictPartition = (List)fromFS.readObject();    
                 }catch(Exception e){
                     System.out.println(e);
                 }
 
+                if (dictPartition != null)
+                    System.out.println("RECEIVED DICT: " + selectedJob);
+
                 fromFS.close();
                 toFS.close();
                 dictSock.close();
 
-                
+                String pword = findPassword(dictPartition, selectedTask);
+                System.out.println("PASSWORD IS : " + pword);
+
+                // decremenet job, and delete node.
+                updateZookeeper( selectedTask, selectedJob, pword );
+
             }
             else{
-                System.out.println("allJobs size 0");
+                System.out.println("no jobs");
             }
 
         }else{
-            System.out.println("pendingTasks size 0");
+            System.out.println("no tasks");
         }
     }
 
@@ -202,6 +211,93 @@ public class Worker {
             System.out.println(e);
         }
     }
+
+    private String convertToMD5(String src){
+        try{
+            MessageDigest md = MessageDigest.getInstance("MD5");    
+        
+            md.update(src.getBytes());
+            byte byteData[] = md.digest();
+            //convert the byte to hex format method 1
+            StringBuffer sb = new StringBuffer();
+            for (int i = 0; i < byteData.length; i++) {
+             sb.append(Integer.toString((byteData[i] & 0xff) + 0x100, 16).substring(1));
+            }
+            //convert the byte to hex format method 2
+            StringBuffer hexString = new StringBuffer();
+            for (int i=0;i<byteData.length;i++) {
+                String hex=Integer.toHexString(0xff & byteData[i]);
+                if(hex.length()==1) hexString.append('0');
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        }catch(Exception e){
+            System.out.println(e);
+        }
+        return null;
+    }
+
+    private String findPassword(List<String> passwords, String passwordHash){
+        for (String password : passwords){
+            if ( convertToMD5(password).equals(passwordHash) ){
+                return password;
+            }
+        }
+        return null;
+    }
+
+    // decrement node in jobs/x
+    // delete jobs/task/job
+    // if password is found, ammend data. 
+    private void updateZookeeper(String task, String job, String result) {
+        
+        try{
+            ZooKeeper zk = zkc.getZooKeeper();
+            // decrement node
+            byte[] dataBytes = zk.getData(
+                "/jobs/" + task, 
+                false, 
+                null
+            );
+            String numJobs = new String(dataBytes);
+            String[] s = numJobs.split(":");
+            int _numJobs = Integer.parseInt(s[1]);
+            String tasksRemaining = String.valueOf(_numJobs - 1);
+
+            // amend data w/ password if found.
+            if (result != null){
+                tasksRemaining += (":password:" + result);
+            }
+
+            String _data = "~:" + tasksRemaining;
+            Stat stat = zk.setData(
+                    "/jobs/" + task, 
+                    _data.getBytes(), 
+                    -1
+                );
+            if (stat == null){
+                System.out.print("Job /jobs/" + task + " was completed while I was working.");
+            }
+            
+
+            // delete the node.
+            try{
+                zk.delete("/jobs/" + task + "/" + job, -1);    
+            }catch(KeeperException e){
+                System.out.print(e);
+                System.out.println("Attempting to Delete Node");
+            }
+            
+            
+        }catch(KeeperException e){
+            System.out.println(e);
+        }catch(InterruptedException e){
+            System.out.println(e);
+        }
+
+    }
+
+
 
 
     // private void handleEvent(WatchedEvent event) {
