@@ -124,14 +124,14 @@ public class JobTrackerHandlerThread extends Thread {
     String status = new String(statusBytes);
     String[] s = status.split(":");
     int tasksComplete = Integer.parseInt(s[1]);
-    if (tasksComplete != 0){
-        return IN_PROGRESS;
-    }else{
-        if (s[0].equals("~")){
-            return NOT_FOUND;
+    if (s[0].equals("~")){
+        if (tasksComplete != 0){
+            return IN_PROGRESS;
         }else{
-            return s[0];
+            return NOT_FOUND;
         }
+    }else{
+        return s[0];
     }
   }
 }
