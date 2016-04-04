@@ -48,6 +48,11 @@ public class ClientDriver implements Runnable {
 
         ClientDriver cd = new ClientDriver(job, args[2], zkc);
         cd.run();
+        try{
+          zkc.close();
+        }catch(InterruptedException e){
+
+        }
     }
 
     public ClientDriver(int jobOrStatus, String jobId, ZkConnector zkc){
@@ -112,8 +117,7 @@ public class ClientDriver implements Runnable {
               }catch(InterruptedException ex){
               }
             }catch(Exception e){
-                e.printStackTrace();
-                System.exit(-1);
+                runningThread.interrupt();
             }
         }
 
@@ -133,7 +137,7 @@ public class ClientDriver implements Runnable {
             String reply = (String) in.readObject();
         }catch(Exception e){
             e.printStackTrace();
-            System.exit(-1);
+            runningThread.interrupt();
         }
         
     }
@@ -146,7 +150,7 @@ public class ClientDriver implements Runnable {
             String reply = (String) in.readObject();
             System.out.println(reply);
         }catch(Exception e){
-            System.exit(-1);
+            runningThread.interrupt();
         }
 
     }

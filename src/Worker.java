@@ -300,7 +300,7 @@ public class Worker {
             
             
         }catch(KeeperException e){
-            e.printStackTrace()
+            e.printStackTrace();
         }catch(InterruptedException e){
             e.printStackTrace();
         }
