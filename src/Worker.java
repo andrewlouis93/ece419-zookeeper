@@ -64,12 +64,14 @@ public class Worker {
         
         while (true){
             try{
+                System.out.println("before register");
                 t.registerFileServer();
+                System.out.println("after register");
                 t.processJobs();    
 
                 // sleep to reduce prob. of overlapping tasks being done.
                 // Thread.currentThread().sleep(10);
-                Thread.currentThread().sleep(1000); 
+                Thread.currentThread().sleep(100); 
             }catch(KeeperException e){
                 System.out.println(e);
             }catch(InterruptedException e){
@@ -283,9 +285,14 @@ public class Worker {
             }
             
 
-            // delete the node.
+            // delete the node, if it exists.
             try{
-                zk.delete("/jobs/" + task + "/" + job, -1);    
+                String toDelete = "/jobs/" + task + "/" + job;
+                Stat _s = zkc.exists( toDelete, null );
+                // /workers hasn't been initialized yet.
+                if (_s != null){
+                    zk.delete(toDelete, -1);    
+                }
             }catch(KeeperException e){
                 System.out.print(e);
                 System.out.println("Attempting to Delete Node");
@@ -293,9 +300,9 @@ public class Worker {
             
             
         }catch(KeeperException e){
-            System.out.println(e);
+            e.printStackTrace()
         }catch(InterruptedException e){
-            System.out.println(e);
+            e.printStackTrace();
         }
 
     }

@@ -58,10 +58,11 @@ public class JobTrackerHandlerThread extends Thread {
 			fromClient.close();
 			toClient.close();
 			socket.close();
+            zkc.close();
 
 		} catch (IOException e) {
 		} catch (ClassNotFoundException e) {
-		}
+		} catch (InterruptedException e){}
 	}
 
   private int addJob(String hash){
