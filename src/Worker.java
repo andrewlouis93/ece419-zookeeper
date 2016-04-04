@@ -98,7 +98,7 @@ public class Worker {
                 String[] s = numJobs.split(":");
                 
                 int tasksRemaining = Integer.parseInt(s[1]);
-                if (tasksRemaining > 0){
+                if (tasksRemaining > 0 && (s.length < 4)){
                     pendingTasks.add( task );                            
                 }
             }
@@ -254,13 +254,15 @@ public class Worker {
             String numJobs = new String(dataBytes);
             String[] s = numJobs.split(":");
             int _numJobs = Integer.parseInt(s[1]);
-            String tasksRemaining = String.valueOf(_numJobs - 1);
+            String tasksRemaining;
 
             // amend data w/ password if found.
             if (result != null){
+                tasksRemaining = String.valueOf(_numJobs);
                 tasksRemaining += (":password:" + result);
             }
             else{
+                 tasksRemaining = String.valueOf(_numJobs - 1);
                 // if job finishes after password is found, 
                 // make sure it's not removed from the data. 
                 if (s.length > 2){
@@ -269,7 +271,7 @@ public class Worker {
             }
 
 
-
+            System.out.println("tasks remaining: " + tasksRemaining);
             String _data = "~:" + tasksRemaining;
             Stat stat = zk.setData(
                     "/jobs/" + task, 
