@@ -82,7 +82,6 @@ public class Worker {
             }catch(IOException e){
                 System.out.println(e);
             }
-
         }
     }
 
@@ -97,7 +96,7 @@ public class Worker {
                 null
             );
             String numJobs = new String(dataBytes);
-
+            System.out.println("numJobs: " + numJobs);
             if (!numJobs.equals("null")){
                 String[] s = numJobs.split(":");
                 
@@ -120,15 +119,15 @@ public class Worker {
                 index = randomGenerator.nextInt( allJobs.size() );
                 String selectedJob = allJobs.get(index);
                 System.out.println("Processing: " + selectedTask + "/" + selectedJob);
-                
-
+    
                 Socket dictSock = new Socket(fsHost, fsPort);
-                System.out.println(fsPort);
-
                 ObjectOutputStream toFS = new ObjectOutputStream(dictSock.getOutputStream());
-                toFS.writeObject(selectedJob);
                 ObjectInputStream fromFS = new ObjectInputStream(dictSock.getInputStream());
-
+                
+                System.out.println ("SENT REQ: " + selectedJob);
+                toFS.writeObject(selectedJob);
+                toFS.flush();
+                
                 List<String> dictPartition = null;
                 try{
                     dictPartition = (List)fromFS.readObject();    
@@ -144,7 +143,7 @@ public class Worker {
                 dictSock.close();
 
                 String pword = findPassword(dictPartition, selectedTask);
-                System.out.println("PASSWORD IS : " + pword);
+                // System.out.println("PASSWORD IS : " + pword);
 
                 // decremenet job, and delete node.
                 updateZookeeper( selectedTask, selectedJob, pword );
