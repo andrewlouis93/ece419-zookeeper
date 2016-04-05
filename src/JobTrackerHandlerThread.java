@@ -122,6 +122,7 @@ public class JobTrackerHandlerThread extends Thread {
     }
 
     String status = new String(statusBytes);
+    System.out.println(status);
     String[] s = status.split(":");
     int tasksComplete = Integer.parseInt(s[1]);
     if (s[0].equals("~")){
@@ -131,7 +132,7 @@ public class JobTrackerHandlerThread extends Thread {
             return NOT_FOUND;
         }
     }else{
-        return s[0];
+        return "Found: " + s[0];
     }
   }
 }
