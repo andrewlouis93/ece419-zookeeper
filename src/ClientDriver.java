@@ -121,7 +121,7 @@ public class ClientDriver implements Runnable {
             }
         }
 
-        System.out.println(socket);
+        // System.out.println(socket);
 
         if(jobOrStatus == 0){
             addJob();
@@ -143,7 +143,7 @@ public class ClientDriver implements Runnable {
     }
 
     private void checkStatus(){
-        System.out.println("Check Status");
+        // System.out.println("Check Status");
         String toJobTracker = "checkstatus:" + jobId;
         try{
             out.writeObject(toJobTracker);

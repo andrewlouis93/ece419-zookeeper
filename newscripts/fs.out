@@ -1,6 +1,0 @@
-Instrumenting org/apache/zookeeper/ClientCnxn$EventThread.queueEvent (Lorg/apache/zookeeper/WatchedEvent;)V.
-
-Dict Path: ../src/dictionary/lowercase.rand
-Found org/apache/zookeeper/ClientCnxn$EventThread
-Found queueEvent Signature (Lorg/apache/zookeeper/WatchedEvent;)V
-ug243.eecg.toronto.edu:50053

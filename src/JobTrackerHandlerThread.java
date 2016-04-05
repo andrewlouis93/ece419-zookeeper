@@ -15,9 +15,10 @@ public class JobTrackerHandlerThread extends Thread {
 	private Socket socket = null;
   private ZkConnector zkc;
   private String jobsPath = "/jobs/";
-  private final String JOB_DOESNT_EXIST = "This job doesn't exist";
-  private final String NOT_FOUND = "Not found";
-  private final String IN_PROGRESS = "Job in progress";
+  private final String FAILED = "Failed: ";
+  private final String JOB_DOESNT_EXIST = "Job not found";
+  private final String NOT_FOUND = "Password no found";
+  private final String IN_PROGRESS = "In progress";
 
 	public JobTrackerHandlerThread(Socket socket, String zkhost) {
 		super("JobTrackerHandlerThread");
@@ -109,7 +110,7 @@ public class JobTrackerHandlerThread extends Thread {
     }
 
     if (stat==null){
-        return JOB_DOESNT_EXIST; 
+        return FAILED + JOB_DOESNT_EXIST; 
     }
 
     byte[] statusBytes = null;
@@ -129,10 +130,10 @@ public class JobTrackerHandlerThread extends Thread {
         if (tasksComplete != 0){
             return IN_PROGRESS;
         }else{
-            return NOT_FOUND;
+            return FAILED + NOT_FOUND;
         }
     }else{
-        return "Found: " + s[0];
+        return "Password found: " + s[0];
     }
   }
 }

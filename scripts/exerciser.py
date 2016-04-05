@@ -19,7 +19,7 @@ FILES = ['start_jobtracker.sh',
          'start_fileserver.sh',
          'submit_job.sh',
          'check_job_status.sh']
-ZOOKEEPER_PORT = 8267
+ZOOKEEPER_PORT = 8078
 FAIL_PASSWORD_NO_FOUND = "password no found"
 running_processes = []
 
